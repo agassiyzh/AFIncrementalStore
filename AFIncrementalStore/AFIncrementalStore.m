@@ -394,6 +394,7 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
             [context performBlockAndWait:^{
                 id representationOrArrayOfRepresentations = [self.HTTPClient representationOrArrayOfRepresentationsOfEntity:fetchRequest.entity fromResponseObject:responseObject];
         
+                [self prefetchObjectsForRepresentationOrArrayOfRepresentations:representationOrArrayOfRepresentations ofEntity:fetchRequest.entity fromResponse:operation.response];
                 NSManagedObjectContext *childContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
                 childContext.parentContext = context;
                 childContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy;
@@ -778,6 +779,7 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
             AFHTTPRequestOperation *operation = [self.HTTPClient HTTPRequestOperationWithRequest:request success:^(AFHTTPRequestOperation *operation, id responseObject) {
                 [childContext performBlock:^{
                     id representationOrArrayOfRepresentations = [self.HTTPClient representationOrArrayOfRepresentationsOfEntity:relationship.destinationEntity fromResponseObject:responseObject];
+                    [self prefetchObjectsForRepresentationOrArrayOfRepresentations:representationOrArrayOfRepresentations ofEntity:relationship.destinationEntity fromResponse:responseObject];
                 
                     [self insertOrUpdateObjectsFromRepresentations:representationOrArrayOfRepresentations ofEntity:relationship.destinationEntity fromResponse:operation.response withContext:childContext error:nil completionBlock:^(NSArray *managedObjects, NSArray *backingObjectIDs) {
                         NSManagedObject *managedObject = [childContext objectWithID:objectID];
@@ -875,6 +877,41 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
     
     for (NSManagedObjectID *objectID in objectIDs) {
         [[_registeredObjectIDsByEntityNameAndNestedResourceIdentifier objectForKey:objectID.entity.name] removeObjectForKey:AFResourceIdentifierFromReferenceObject([self referenceObjectForObjectID:objectID])];
+    }
+}
+
+#pragma mark - Prefetching
+
+- (void)prefetchObjectsForRepresentationOrArrayOfRepresentations:(id)representationOrArrayOfRepresentations
+                                                        ofEntity:(NSEntityDescription *)entity fromResponse:(NSHTTPURLResponse *)response
+{
+    NSArray *representations = nil;
+    
+    if ([representationOrArrayOfRepresentations isKindOfClass:[NSArray class]]) {
+        representations = representationOrArrayOfRepresentations;
+    }
+    else if([representationOrArrayOfRepresentations isKindOfClass:[NSDictionary class]]) {
+        representations = @[representationOrArrayOfRepresentations];
+    }
+    else {
+        return;
+    }
+    
+    for (NSDictionary *representation in representations)
+    {
+        NSString *resourceIdentifier = [self.HTTPClient resourceIdentifierForRepresentation:representation ofEntity:entity fromResponse:response];
+        if (resourceIdentifier) {
+            [[self backing] prefetchObjectForEntityName:entity.name resourceIdentifier:resourceIdentifier];
+        }
+        
+        NSDictionary *relationshipRepresentations = [self.HTTPClient representationsForRelationshipsFromRepresentation:representation ofEntity:entity fromResponse:response];
+        [relationshipRepresentations enumerateKeysAndObjectsUsingBlock:^(NSString *name, id relationshipRepresentation, BOOL *stop) {
+            NSRelationshipDescription *relationship = entity.relationshipsByName[name];
+            if (!relationship || [relationshipRepresentation isEqual:[NSNull null]]) {
+                return;
+            }
+            [self prefetchObjectsForRepresentationOrArrayOfRepresentations:relationshipRepresentation ofEntity:relationship.destinationEntity fromResponse:response];
+        }];
     }
 }
 
