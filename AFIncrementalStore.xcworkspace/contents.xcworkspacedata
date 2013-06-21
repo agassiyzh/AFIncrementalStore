@@ -5,6 +5,12 @@
       location = "group:AFIncrementalStore"
       name = "AFIncrementalStore">
       <FileRef
+         location = "group:AFIncrementalBacking.h">
+      </FileRef>
+      <FileRef
+         location = "group:AFIncrementalBacking.m">
+      </FileRef>
+      <FileRef
          location = "group:AFIncrementalStore.h">
       </FileRef>
       <FileRef
