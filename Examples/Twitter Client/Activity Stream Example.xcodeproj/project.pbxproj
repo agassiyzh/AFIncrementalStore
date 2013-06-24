@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3725460D1774B51E00E88F27 /* AFIncrementalBacking.m in Sources */ = {isa = PBXBuildFile; fileRef = 3725460C1774B51E00E88F27 /* AFIncrementalBacking.m */; };
 		F81D903616F3DED30043C85A /* NSValueTransformer+TransformerKit.m in Sources */ = {isa = PBXBuildFile; fileRef = F81D903016F3DED30043C85A /* NSValueTransformer+TransformerKit.m */; };
 		F81D905016F3DEF00043C85A /* NSString+InflectorKit.m in Sources */ = {isa = PBXBuildFile; fileRef = F81D904D16F3DEF00043C85A /* NSString+InflectorKit.m */; };
 		F81D905116F3DEF00043C85A /* TTTStringInflector.m in Sources */ = {isa = PBXBuildFile; fileRef = F81D904F16F3DEF00043C85A /* TTTStringInflector.m */; };
@@ -45,6 +46,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3725460B1774B51E00E88F27 /* AFIncrementalBacking.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AFIncrementalBacking.h; sourceTree = "<group>"; };
+		3725460C1774B51E00E88F27 /* AFIncrementalBacking.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AFIncrementalBacking.m; sourceTree = "<group>"; };
 		F81D902F16F3DED30043C85A /* NSValueTransformer+TransformerKit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSValueTransformer+TransformerKit.h"; sourceTree = "<group>"; };
 		F81D903016F3DED30043C85A /* NSValueTransformer+TransformerKit.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSValueTransformer+TransformerKit.m"; sourceTree = "<group>"; };
 		F81D903516F3DED30043C85A /* TransformerKit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TransformerKit.h; sourceTree = "<group>"; };
@@ -235,6 +238,8 @@
 		F8AD92E215D9A0BB00402FE9 /* AFIncrementalStore */ = {
 			isa = PBXGroup;
 			children = (
+				3725460B1774B51E00E88F27 /* AFIncrementalBacking.h */,
+				3725460C1774B51E00E88F27 /* AFIncrementalBacking.m */,
 				F8AD92E315D9A0BB00402FE9 /* AFIncrementalStore.h */,
 				F8AD92E415D9A0BB00402FE9 /* AFIncrementalStore.m */,
 				F8AD92E515D9A0BB00402FE9 /* AFRESTClient.h */,
@@ -405,6 +410,7 @@
 				F8F82416173893D400ED7E21 /* TTTDateTransformers.m in Sources */,
 				F8F82417173893D400ED7E21 /* TTTImageTransformers.m in Sources */,
 				F8F82418173893D400ED7E21 /* TTTStringTransformers.m in Sources */,
+				3725460D1774B51E00E88F27 /* AFIncrementalBacking.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
