@@ -169,10 +169,19 @@ static NSString *const kAFIncrementalBackingErrorDomain = @"AFIncrementalBacking
     return objectID != (id) [NSNull null] ? objectID : nil;
 }
 
-- (NSDictionary *)attributesForObjectWithID:(NSManagedObjectID *)objectID
+- (NSDictionary *)attributesAndToOneRelationshipsForObjectWithID:(NSManagedObjectID *)objectID
 {
     NSManagedObject *object = [_managedObjectContext objectWithID:objectID];
-    return [object dictionaryWithValuesForKeys:objectID.entity.attributesByName.allKeys];
+    NSMutableDictionary *attributesAndToOneRelationships = [NSMutableDictionary new];
+    [objectID.entity.attributesByName enumerateKeysAndObjectsUsingBlock:^(NSString *name, id obj, BOOL *stop) {
+        [attributesAndToOneRelationships setValue:[object valueForKey:name] forKey:name];
+    }];
+    [objectID.entity.relationshipsByName enumerateKeysAndObjectsUsingBlock:^(NSString *name, NSRelationshipDescription *relationship, BOOL *stop) {
+        if ( ! relationship.isToMany ) {
+            [attributesAndToOneRelationships setValue:[[object valueForKey:name] valueForKey:@"objectID"] forKey:name];
+        }
+    }];
+    return attributesAndToOneRelationships;
 }
 
 - (NSString *)resourceIdentifierForObjectWithID:(NSManagedObjectID *)objectID

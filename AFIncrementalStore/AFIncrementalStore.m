@@ -681,14 +681,22 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
 {
     NSString *resourceIdentifier = AFResourceIdentifierFromReferenceObject([self referenceObjectForObjectID:objectID]);
     
+    // Documentation states that “the returned node [...] may include to-one relationship values as instances of NSManagedObjectID”.
+    // But when it doesn't, the managed object's to-one relationships become nil after a save request until the managed object turns back into fault.
+    // Let's pretend the documentation meant to say “should”.
+    
     __block NSMutableDictionary *attributes;
     AFIncrementalBacking *backing = [self backing];
     [backing performBlockAndWait:^{
         NSManagedObjectID *backingObjectID = resourceIdentifier ? [backing objectIDForEntityName:objectID.entity.name resourceIdentifier:resourceIdentifier error:nil] : nil;
-        attributes = backingObjectID ? [backing attributesForObjectWithID:backingObjectID].mutableCopy : nil;
-        [attributes removeObjectsForKeys:[attributes keysOfEntriesPassingTest:^BOOL(id key, id obj, BOOL *stop) {
-            return obj == (id) [NSNull null];
-        }].allObjects];
+        attributes = backingObjectID ? [backing attributesAndToOneRelationshipsForObjectWithID:backingObjectID].mutableCopy : nil;
+        [objectID.entity.relationshipsByName enumerateKeysAndObjectsUsingBlock:^(NSString *name, NSRelationshipDescription *relationship, BOOL *stop) {
+            if (relationship.isToMany || nil == attributes[name]) {
+                return;
+            }
+            NSString *resourceID = [backing resourceIdentifierForObjectWithID:attributes[name]];
+            attributes[name] = [self objectIDForEntity:relationship.destinationEntity withResourceIdentifier:resourceID];
+        }];
     }];
     
     NSDictionary *attributeValues = attributes ?: [NSDictionary dictionary];
@@ -716,6 +724,7 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                         NSManagedObject *managedObject = [childContext existingObjectWithID:objectID error:nil];
 
                         NSMutableDictionary *mutableAttributeValues = [attributeValues mutableCopy];
+                        [mutableAttributeValues removeObjectsForKeys:objectID.entity.relationshipsByName.allKeys];
                         [mutableAttributeValues addEntriesFromDictionary:[self.HTTPClient attributesForRepresentation:representation ofEntity:managedObject.entity fromResponse:operation.response]];
                         [mutableAttributeValues removeObjectForKey:kAFIncrementalStoreResourceIdentifierAttributeName];
                         [mutableAttributeValues removeObjectForKey:kAFIncrementalStoreLastModifiedAttributeName];
