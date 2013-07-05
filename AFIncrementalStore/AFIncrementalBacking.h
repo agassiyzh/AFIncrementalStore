@@ -38,7 +38,7 @@
                usingInstantiator:(NSManagedObject *(^)(NSManagedObjectID *objectID, NSError **outError))instantiator;
 
 - (NSManagedObjectID *)objectIDForEntityName:(NSString *)entityName resourceIdentifier:(NSString *)resourceIdentifier error:(NSError **)outError;
-- (NSDictionary *)attributesForObjectWithID:(NSManagedObjectID *)objectID;
+- (NSDictionary *)attributesAndToOneRelationshipsForObjectWithID:(NSManagedObjectID *)objectID;
 - (NSString *)resourceIdentifierForObjectWithID:(NSManagedObjectID *)objectID;
 - (NSArray *)objectIDsForRelationshipName:(NSString *)relationshipName forObjectWithID:(NSManagedObjectID *)objectID;
 - (NSEntityDescription *)entityForName:(NSString *)entityName;
