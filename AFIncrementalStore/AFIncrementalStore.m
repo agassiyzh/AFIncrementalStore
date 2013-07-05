@@ -248,6 +248,11 @@ static inline void AFSaveBackingOrThrowInternalConsistencyException(AFIncrementa
 withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedObject
 {
     for (NSRelationshipDescription *relationship in [managedObject.entity.relationshipsByName allValues]) {
+        
+        if ([managedObject hasFaultForRelationshipNamed:relationship.name]) {
+            continue;
+        }
+        
         id relationshipValue = [managedObject valueForKey:relationship.name];
         if (!relationshipValue) {
             continue;
