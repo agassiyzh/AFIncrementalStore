@@ -164,7 +164,7 @@ static inline void AFSaveBackingOrThrowInternalConsistencyException(AFIncrementa
              aboutRequestOperation:(AFHTTPRequestOperation *)operation
        forNewValuesForObjectWithID:(NSManagedObjectID *)objectID
 {
-    NSString *notificationName = [operation isFinished] ? AFIncrementalStoreContextWillFetchNewValuesForObject : AFIncrementalStoreContextDidFetchNewValuesForObject;
+    NSString *notificationName = [operation isFinished] ? AFIncrementalStoreContextDidFetchNewValuesForObject :AFIncrementalStoreContextWillFetchNewValuesForObject;
 
     NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
     [userInfo setObject:[NSArray arrayWithObject:operation] forKey:AFIncrementalStoreRequestOperationsKey];
@@ -178,7 +178,7 @@ static inline void AFSaveBackingOrThrowInternalConsistencyException(AFIncrementa
        forNewValuesForRelationship:(NSRelationshipDescription *)relationship
                    forObjectWithID:(NSManagedObjectID *)objectID
 {
-    NSString *notificationName = [operation isFinished] ? AFIncrementalStoreContextWillFetchNewValuesForRelationship : AFIncrementalStoreContextDidFetchNewValuesForRelationship;
+    NSString *notificationName = [operation isFinished] ? AFIncrementalStoreContextDidFetchNewValuesForRelationship : AFIncrementalStoreContextWillFetchNewValuesForRelationship;
 
     NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
     [userInfo setObject:[NSArray arrayWithObject:operation] forKey:AFIncrementalStoreRequestOperationsKey];
@@ -417,7 +417,7 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                         [context performBlockAndWait:^{
                             for (NSManagedObject *childObject in childObjects) {
                                 NSManagedObject *parentObject = [context objectWithID:childObject.objectID];
-                                [context refreshObject:parentObject mergeChanges:NO];
+                                [context refreshObject:parentObject mergeChanges:YES];
                             }
                         }];
 
@@ -527,7 +527,28 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                     [context refreshObject:insertedObject mergeChanges:NO];
                 }
             } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-                NSLog(@"Insert Error: %@", error);
+				 NSLog(@"Insert Error: %@", error);
+				
+				// Reset destination objects to prevent dangling relationships
+				for (NSRelationshipDescription *relationship in [insertedObject.entity.relationshipsByName allValues]) {
+					if (!relationship.inverseRelationship) {
+						continue;
+					}
+
+                    id <NSFastEnumeration> destinationObjects = nil;
+					if ([relationship isToMany]) {
+						destinationObjects = [insertedObject valueForKey:relationship.name];
+					} else {
+						NSManagedObject *destinationObject = [insertedObject valueForKey:relationship.name];
+						if (destinationObject) {
+							destinationObjects = [NSArray arrayWithObject:destinationObject];
+						}
+					}
+					
+					for (NSManagedObject *destinationObject in destinationObjects) {
+						[context refreshObject:destinationObject mergeChanges:NO];
+					}
+				}
             }];
             
             [mutableOperations addObject:operation];
@@ -558,7 +579,7 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                         [backing save:nil];
                     }];
 
-                    [context refreshObject:updatedObject mergeChanges:NO];
+                    [context refreshObject:updatedObject mergeChanges:YES];
                 }
             } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                 NSLog(@"Update Error: %@", error);
@@ -706,7 +727,7 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
     }];
     
     NSDictionary *attributeValues = attributes ?: [NSDictionary dictionary];
-    NSIncrementalStoreNode *node = [[NSIncrementalStoreNode alloc] initWithObjectID:objectID withValues:attributeValues version:CFAbsoluteTimeGetCurrent()];
+    NSIncrementalStoreNode *node = [[NSIncrementalStoreNode alloc] initWithObjectID:objectID withValues:attributeValues version:1];
     
     if ([self.HTTPClient respondsToSelector:@selector(shouldFetchRemoteAttributeValuesForObjectWithID:inManagedObjectContext:)] && [self.HTTPClient shouldFetchRemoteAttributeValuesForObjectWithID:objectID inManagedObjectContext:context]) {
         if (attributeValues) {
@@ -746,10 +767,6 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                             [[self backing] updateObjectWithID:backingObjectID withAttributes:@{kAFIncrementalStoreLastModifiedAttributeName: lastModified}];
                         }
 
-                        id observer = [[NSNotificationCenter defaultCenter] addObserverForName:NSManagedObjectContextDidSaveNotification object:childContext queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
-                            [context mergeChangesFromContextDidSaveNotification:note];
-                        }];
-
                         [childContext performBlockAndWait:^{
                             AFSaveManagedObjectContextOrThrowInternalConsistencyException(childContext);
 
@@ -759,8 +776,6 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                             }];
                         }];
                         
-                        [[NSNotificationCenter defaultCenter] removeObserver:observer];
-
                         [self notifyManagedObjectContext:context aboutRequestOperation:operation forNewValuesForObjectWithID:objectID];
                     }];
 
@@ -814,10 +829,6 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                         if (backingObjectID) {
                             [[self backing] updateObjectWithID:backingObjectID withObjectIDs:backingObjectIDs forRelationshipName:relationship.name];
                         }
-                        
-                        id observer = [[NSNotificationCenter defaultCenter] addObserverForName:NSManagedObjectContextDidSaveNotification object:childContext queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
-                            [context mergeChangesFromContextDidSaveNotification:note];
-                        }];
 
                         [childContext performBlockAndWait:^{
                             AFSaveManagedObjectContextOrThrowInternalConsistencyException(childContext);
@@ -828,8 +839,6 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                             }];
                         }];
 
-                        [[NSNotificationCenter defaultCenter] removeObserver:observer];
-
                         [self notifyManagedObjectContext:context aboutRequestOperation:operation forNewValuesForRelationship:relationship forObjectWithID:objectID];
                     }];
                 }];
@@ -837,7 +846,8 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
                 NSLog(@"Error: %@, %@", operation, error);
                 [self notifyManagedObjectContext:context aboutRequestOperation:operation forNewValuesForRelationship:relationship forObjectWithID:objectID];
             }];
-
+			
+			[self notifyManagedObjectContext:context aboutRequestOperation:operation forNewValuesForRelationship:relationship forObjectWithID:objectID];
             [self.HTTPClient enqueueHTTPRequestOperation:operation];
         }
     }
