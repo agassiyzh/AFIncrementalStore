@@ -504,9 +504,17 @@ withAttributeAndRelationshipValuesFromManagedObject:(NSManagedObject *)managedOb
             NSURLRequest *request = [self.HTTPClient requestForInsertedObject:insertedObject];
             if (!request) {
                 [backingContext performBlockAndWait:^{
-                    CFUUIDRef UUID = CFUUIDCreate(NULL);
-                    NSString *resourceIdentifier = (__bridge_transfer NSString *)CFUUIDCreateString(NULL, UUID);
-                    CFRelease(UUID);
+                    
+                    NSString *resourceIdentifier = nil;
+                    if ([self.HTTPClient respondsToSelector:@selector(resourceIdentifierForInsertedObject:)]) {
+                        resourceIdentifier = [self.HTTPClient resourceIdentifierForInsertedObject:insertedObject];
+                        insertedObject.af_resourceIdentifier = resourceIdentifier;
+                    }
+                    if (!resourceIdentifier) {
+                        CFUUIDRef UUID = CFUUIDCreate(NULL);
+                        resourceIdentifier = (__bridge_transfer NSString *)CFUUIDCreateString(NULL, UUID);
+                        CFRelease(UUID);
+                    }
                     
                     NSManagedObject *backingObject = [NSEntityDescription insertNewObjectForEntityForName:insertedObject.entity.name inManagedObjectContext:backingContext];
                     [backingObject.managedObjectContext obtainPermanentIDsForObjects:[NSArray arrayWithObject:backingObject] error:nil];

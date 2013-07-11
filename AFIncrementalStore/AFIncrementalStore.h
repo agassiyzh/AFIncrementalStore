@@ -254,6 +254,18 @@
 - (NSMutableURLRequest *)requestForDeletedObject:(NSManagedObject *)deletedObject;
 
 /**
+ Returns the resource identifier for a particular managed object.
+ 
+ @discussion By default, on insertion, managed objects don't obtain persistent IDs unless they are subsequently inserted on the server.
+ You may implement this method to provide resource identifiers for objects that were retrieved from the server and inserted through another medium than `AFIncrementalStore`.
+ 
+ @param insertedObject A managed object that was inserted into a managed object context.
+ 
+ @return An `NSString` resource identifier for the managed object.
+ */
+- (NSString *)resourceIdentifierForInsertedObject:(NSManagedObject *)insertedObject;
+
+/**
  Returns whether the client should fetch remote attribute values for a particular managed object. This method is consulted when a managed object faults on an attribute, and will call `-requestWithMethod:pathForObjectWithID:withContext:` if `YES`.
  
  @param objectID The object ID for the specified managed object.
